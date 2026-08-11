@@ -1,0 +1,4 @@
+interface:
+  display_name: "抖音特效全链路搭档"
+  short_description: "从当下调研和创意共创，到像塑制作、预览、排障与提交"
+  default_prompt: "使用 $douyin-effect-pipeline，从一个模糊想法开始，帮我完成可提交的抖音特效。"

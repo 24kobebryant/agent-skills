@@ -1,0 +1,30 @@
+{
+  "project": {
+    "name": "",
+    "path": "",
+    "tool_version": ""
+  },
+  "goal": "",
+  "phase": "idea",
+  "experience": {
+    "one_line": "",
+    "camera": "",
+    "start": "",
+    "input": "",
+    "win": "",
+    "lose": "",
+    "replay": ""
+  },
+  "decisions": [],
+  "open_questions": [],
+  "out_of_scope": [],
+  "evidence": {
+    "source": "not_run",
+    "compile": "not_run",
+    "editor_preview": "not_run",
+    "phone_preview": "not_run",
+    "effect_detection": "not_run",
+    "submission": "not_run"
+  },
+  "last_verified_at": ""
+}
