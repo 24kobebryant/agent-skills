@@ -1,5 +1,7 @@
 # Agent Skills
 
+[![skills.sh](https://skills.sh/b/24kobebryant/agent-skills)](https://skills.sh/24kobebryant/agent-skills)
+
 可复用的 Agent Skills，遵循 `SKILL.md` 目录规范，可安装到 Codex、Claude Code、Cursor 等支持 Agent Skills 的工具。
 
 ## Skills
