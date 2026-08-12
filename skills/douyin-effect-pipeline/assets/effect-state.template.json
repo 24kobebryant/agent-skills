@@ -26,5 +26,9 @@
     "effect_detection": "not_run",
     "submission": "not_run"
   },
+  "evidence_details": {
+    "scene_native_integrity": "not_run",
+    "single_image_smoke": "not_run"
+  },
   "last_verified_at": ""
 }

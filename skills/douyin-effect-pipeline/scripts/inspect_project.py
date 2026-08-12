@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import struct
 import sys
 from collections import defaultdict
@@ -118,6 +119,47 @@ def main() -> int:
 
     if not scenes:
         warnings.append("no .scene source found under Assets")
+
+    for scene in scenes:
+        try:
+            scene_text = scene.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            warnings.append(f"cannot inspect scene {scene.relative_to(project)}: {exc}")
+            continue
+
+        entity_count = len(re.findall(r"^  - __class: Entity$", scene_text, re.MULTILINE))
+        image_count = len(re.findall(r"__class: ImageRenderer", scene_text))
+        screen_transform_count = len(
+            re.findall(r"^--- !ScreenTransform", scene_text, re.MULTILINE)
+        )
+        scene_extra = Path(str(scene) + ".extra")
+        metadata_count = 0
+        if scene_extra.is_file():
+            try:
+                metadata = read_json(scene_extra)
+                metadata_count = len(metadata) if isinstance(metadata, list) else 0
+            except (OSError, json.JSONDecodeError):
+                pass
+
+        print(
+            f"Scene {scene.relative_to(project)}: entities={entity_count}, "
+            f"image_renderers={image_count}, screen_transforms={screen_transform_count}, "
+            f"metadata_records={metadata_count}"
+        )
+
+        suspicious_numeric_guids = re.findall(
+            r"guid: \{a: (?:[6-9][0-9]0{12,}[0-9]+), b: (?:[6-9][0-9]0{12,}[0-9]+)\}",
+            scene_text,
+        )
+        suspicious_string_guids = re.findall(
+            r'"a": "[a-f0-9]{1,4}0{4,}-0{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-0{8,}[0-9a-f]*"',
+            scene_extra.read_text(encoding="utf-8") if scene_extra.is_file() else "",
+        )
+        if image_count and (len(suspicious_numeric_guids) >= 3 or len(suspicious_string_guids) >= 3):
+            warnings.append(
+                f"scene {scene.relative_to(project)} contains repeated patterned GUIDs; "
+                "treat it as possibly hand-authored and require a single-image visual smoke test"
+            )
 
     missing_sidecars = [path for path in source_files if not Path(str(path) + ".extra").is_file()]
     for path in missing_sidecars:
