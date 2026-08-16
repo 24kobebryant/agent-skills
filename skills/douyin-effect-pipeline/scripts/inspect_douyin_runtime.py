@@ -52,6 +52,7 @@ def latest_editor_log(log_root: Path) -> Path | None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--signals", type=int, default=25, help="maximum recent log signal lines")
+    parser.add_argument("--project", type=Path, help="expected project directory")
     args = parser.parse_args()
 
     if sys.platform != "darwin":
@@ -90,6 +91,25 @@ def main() -> int:
     duplicate_projects = {project: pids for project, pids in by_project.items() if len(pids) > 1}
     for project, pids in duplicate_projects.items():
         print(f"ERROR: duplicate editor writers for {project}: {pids}")
+
+    expected_project = args.project.expanduser().resolve() if args.project else None
+    editors = [row for row in rows if row[3] == "editor"]
+    if expected_project:
+        matched = [
+            row
+            for row in editors
+            if row[4] and Path(row[4]).expanduser().resolve() == expected_project
+        ]
+        unknown = [row for row in editors if not row[4]]
+        if matched:
+            print(f"Expected project editor: matched PID(s) {[row[0] for row in matched]}")
+        elif unknown:
+            print(
+                "WARN: editor process does not expose a project path; confirm the window title and "
+                f"latest Open project log before writing {expected_project}"
+            )
+        else:
+            print(f"WARN: no editor process matched expected project {expected_project}")
 
     log_root = Path.home() / "Library" / "Application Support" / "DouyinAR" / "Logs"
     log = latest_editor_log(log_root) if log_root.is_dir() else None

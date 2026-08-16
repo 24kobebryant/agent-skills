@@ -98,8 +98,17 @@ description: 从模糊想法到可提交成品的抖音像塑特效全链路工�
 
 ```bash
 python3 <skill-dir>/scripts/inspect_project.py <project-dir>
-python3 <skill-dir>/scripts/inspect_douyin_runtime.py
+python3 <skill-dir>/scripts/inspect_douyin_runtime.py --project <project-dir>
+python3 <skill-dir>/scripts/analyze_event_chains.py <project-dir>
 ```
+
+成对切换的位图（如开/闭口）导入前运行：
+
+```bash
+python3 <skill-dir>/scripts/inspect_texture_pair.py closed.png open.png
+```
+
+脚本报错先修源文件；警告必须在真实预览中逐项验证，不能用平台检测通过覆盖互动逻辑问题。
 
 实现时：
 
@@ -112,6 +121,8 @@ python3 <skill-dir>/scripts/inspect_douyin_runtime.py
 7. 烘焙在图片中的文案需要修改源位图，并验证尺寸、Alpha 和实际导入结果。
 8. 不将编辑器生成的 `Library`、缓存或上传结果误认为源实现。
 9. 保持改动可回退，避免两个编辑器实例同时写同一工程。
+10. 先选实现路由：2D 贴图、2.5D 分层、3D 刚体头套、3D 骨骼/BlendShape 或 AI 变脸。3D 嘴部联动在进编辑器前必须确认模型含下颌骨或张嘴 BlendShape。
+11. 张嘴/闭嘴不得用两个可能同时为真的持续条件互相覆盖。优先使用带迟滞的状态机：`mouth > open_threshold` 时开、`mouth < close_threshold` 时关，且 `close_threshold < open_threshold`。`disable` 只表示停用节点，不表示条件取反。
 
 ## 阶段 5：预览和反馈
 
@@ -120,12 +131,15 @@ python3 <skill-dir>/scripts/inspect_douyin_runtime.py
 1. 静态素材和工程结构；
 2. TypeScript/图逻辑编译；
 3. 编辑器真实运行；
-4. 手机预览完整一局；
-5. 重拍或重新进入后的第二局。
+4. 互动时间序列；
+5. 手机预览完整一局；
+6. 重拍或重新进入后的第二局。
 
 完整一局必须覆盖：首帧、启动、所有方向/手势、边界或碰撞、胜利、失败、结算文案、重玩。不要把“编辑器里看到了画面”当作“能玩”。
 
 节点出现在层级、属性面板能选中纹理、脚本日志显示显隐切换，均不证明图片已经渲染。只有中央场景或预览截图中出现目标像素，才能将编辑器视觉记为 `passed`。
+
+互动时间序列至少包含“初始 → 触发 → 释放/恢复”。张嘴特效必须留下“闭嘴 → 张嘴 → 再闭嘴”证据；固定间隔采样时避免落在循环视频同一相位，优先 0.2–0.5 秒连续采样或录屏。
 
 用户反馈后先归类：
 
@@ -142,6 +156,8 @@ python3 <skill-dir>/scripts/inspect_douyin_runtime.py
 如果单图冒烟在两次干净冷启动后仍只显示默认摄像头，立即停止补 GUID、父子关系或材质字段。保留失败工程备份，改从像塑生成或已验证的完整工程骨架重建；这种症状优先视为原生对象图不完整，而不是继续归因于脚本。
 
 遇到像塑特有问题时读取 [douyin-ar-troubleshooting.md](references/douyin-ar-troubleshooting.md)。不要把硬编码屏幕坐标作为持久方案；每次先识别窗口、进程和当前截图，再执行界面操作。
+
+等待编辑器时优先观察进程、导入日志和场景加载信号；固定 `sleep` 只作为最后手段。若必须坐标操作，先记录显示缩放、目标窗口边界和最新截图，操作后立即验证页面状态。
 
 修复完成标准：
 
