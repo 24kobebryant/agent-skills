@@ -161,7 +161,9 @@ def main() -> int:
                 "treat it as possibly hand-authored and require a single-image visual smoke test"
             )
 
-    missing_sidecars = [path for path in source_files if not Path(str(path) + ".extra").is_file()]
+    missing_sidecars = [path for path in source_files
+                        if not any(parent.name.endswith(".otextureseq.folder") for parent in path.parents)
+                        and not Path(str(path) + ".extra").is_file()]
     for path in missing_sidecars:
         warnings.append(f"missing sidecar: {path.relative_to(project)}.extra")
 

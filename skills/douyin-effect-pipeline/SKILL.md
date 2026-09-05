@@ -32,6 +32,8 @@ description: 从模糊想法到可提交成品的抖音像塑特效全链路工�
 
 ## 工作流路由
 
+工程检查统一入口及证据格式见 [effectctl.md](references/effectctl.md)。跟踪/动作问题读取 [tracking-and-animation.md](references/tracking-and-animation.md)；二维码、包体、图标、审核拒绝读取 [preview-and-review-cases.md](references/preview-and-review-cases.md)。这些是版本限定案例，不是无条件处方。本地按症状检索，暂不依赖 RAG。
+
 根据用户当前所处阶段进入流程，不要求每次从头开始：
 
 - 只有模糊想法：从“当前事实与创意发散”开始。
@@ -82,9 +84,9 @@ description: 从模糊想法到可提交成品的抖音像塑特效全链路工�
 - 用户是否露脸以及摄像头方向；
 - 开始条件和首帧；
 - 唯一核心操作及热区；
-- 游戏状态：准备、进行、胜利、失败、重玩；
-- 成功与失败触发条件；
-- 重玩方式，且结算文案必须与真实操作一致；
+- 类型相关状态：游戏写准备/胜负/重玩；跟踪挂件写入镜/跟踪/丢失/恢复；
+- 对应状态的触发条件；
+- 重进方式，且文案必须与真实操作一致；
 - 关键素材和音频；
 - 明确不做；
 - 尚需通过原型验证的假设；
@@ -97,8 +99,8 @@ description: 从模糊想法到可提交成品的抖音像塑特效全链路工�
 先检查当前工作区，确定正确工程路径，避免在模板、旧副本或发布副本上误改。对已有工程先运行：
 
 ```bash
-python3 <skill-dir>/scripts/inspect_project.py <project-dir>
-python3 <skill-dir>/scripts/inspect_douyin_runtime.py --project <project-dir>
+python3 <skill-dir>/scripts/effectctl.py doctor <project-dir> --json
+python3 <skill-dir>/scripts/effectctl.py assets <project-dir> --json
 python3 <skill-dir>/scripts/analyze_event_chains.py <project-dir>
 ```
 
@@ -112,8 +114,8 @@ python3 <skill-dir>/scripts/inspect_texture_pair.py closed.png open.png
 
 实现时：
 
-1. 先做单图视觉冒烟：用一个像塑原生 `ImageRenderer + ScreenTransform` 节点显示高对比全屏测试图，要求中央场景和预览画面都真实覆盖默认摄像头；未通过时禁止继续写互动脚本。
-2. 再完成最短闭环：启动 → 一次操作 → 胜利/失败 → 重玩。
+1. 新建或重建 2D 场景先做单图视觉冒烟；已经真实渲染的工程不为例行修复覆盖现有画面。3D 场景验证原生模型渲染，不强行改成 2D。
+2. 再完成类型对应的最短闭环：游戏验证操作/结算/重玩；跟踪特效验证识别/跟随/丢失/恢复。
 3. 再替换正式角色和背景素材；优先复用现有模板、节点和稳定脚本接口。
 4. 所有交互按钮同时验证视觉尺寸和真实点击热区。
 5. 素材替换时保持 `.extra`/GUID 引用一致；不要只看文件名，也不要手工编造规律 GUID。
@@ -132,10 +134,10 @@ python3 <skill-dir>/scripts/inspect_texture_pair.py closed.png open.png
 2. TypeScript/图逻辑编译；
 3. 编辑器真实运行；
 4. 互动时间序列；
-5. 手机预览完整一局；
-6. 重拍或重新进入后的第二局。
+5. 手机预览完整交互周期；
+6. 重拍或重新进入后的第二次交互。
 
-完整一局必须覆盖：首帧、启动、所有方向/手势、边界或碰撞、胜利、失败、结算文案、重玩。不要把“编辑器里看到了画面”当作“能玩”。
+游戏覆盖首帧、启动、方向/手势、边界、胜负、结算、重玩。跟踪特效覆盖入镜、平移、距离、转头、出镜再入镜；动作至少连续两个循环。检测位置与动画自然度分别验收，不把静态画面当成“能玩”或“流畅”。
 
 节点出现在层级、属性面板能选中纹理、脚本日志显示显隐切换，均不证明图片已经渲染。只有中央场景或预览截图中出现目标像素，才能将编辑器视觉记为 `passed`。
 
@@ -162,7 +164,7 @@ python3 <skill-dir>/scripts/inspect_texture_pair.py closed.png open.png
 修复完成标准：
 
 - 原始症状在同一反馈环中消失；
-- 没有破坏成功、失败和重玩；
+- 没有破坏类型对应的状态切换与重进；
 - 编辑器和手机端至少完成与改动相关的验证；
 - 临时调试素材和日志标记已清理；
 - 明确报告尚未验证的证据层。
@@ -172,6 +174,8 @@ python3 <skill-dir>/scripts/inspect_texture_pair.py closed.png open.png
 读取 [acceptance-and-publishing.md](references/acceptance-and-publishing.md)，逐层记录状态：`passed`、`failed`、`not_run` 或 `blocked`。
 
 发布前重新核对：
+
+先运行 `effectctl.py size` 和 `preflight`，读取 [effectctl.md](references/effectctl.md) 的证据限制。记录绑定当前源/导出包指纹；旧证据不得自动继承。调试视频、备份与源稿放工程外，通用工具留在 Skill；不要将它们一起打包或一起删除。
 
 - 名称、触发提示和玩法一致；
 - 男女图标或平台要求的封面均为最终版本；

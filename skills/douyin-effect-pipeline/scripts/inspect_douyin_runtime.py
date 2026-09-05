@@ -12,12 +12,13 @@ from pathlib import Path
 
 
 PROCESS_MARKERS = (
-    "/Applications/Douyin AR.app/Contents/MacOS/Douyin AR",
+    ".app/Contents/MacOS/Douyin AR",
     "DouyinAR.app/Contents/MacOS",
 )
 SIGNAL_PATTERN = re.compile(
     r"Open project successfully|LoadProject|import_(?:start|end)|compiled success|compile.*(?:fail|error)|"
-    r"scene.*(?:fail|error)|process exit|close_start|AMGAssert|No available pass",
+    r"scene.{0,60}?(?:fail|error)|process exit|close_start|AMGAssert|No available pass|"
+    r"ETIMEDOUT|ECONNREFUSED|ENOTFOUND|effect_upload_result",
     re.IGNORECASE,
 )
 PROJECT_PATTERNS = (
@@ -33,6 +34,11 @@ def redact(line: str) -> str:
 
 
 def project_from_command(command: str) -> str:
+    # ps emits unquoted argv: preserve spaces until the next flag, rather than
+    # binding an editor for '/tmp/My Cat' to '/tmp/My'.
+    match = re.search(r"--(?:projectPath|project)(?:=|\s+)(.*?)(?=\s+--|$)", command)
+    if match:
+        return match.group(1).strip().strip("\"'")
     for pattern in PROJECT_PATTERNS:
         match = pattern.search(command)
         if match:
@@ -75,7 +81,7 @@ def main() -> int:
             continue
         pid, ppid, started, command = match.groups()
         project = project_from_command(command)
-        role = "editor" if "--projectType=project" in command or project else "home"
+        role = "editor" if "--projectType=project" in command or "--index=" in command or project else "home"
         rows.append((int(pid), int(ppid), started.strip(), role, project))
 
     print(f"Douyin AR processes: {len(rows)}")
@@ -103,12 +109,15 @@ def main() -> int:
         unknown = [row for row in editors if not row[4]]
         if matched:
             print(f"Expected project editor: matched PID(s) {[row[0] for row in matched]}")
+            print("Binding: matched_by_process_argument")
         elif unknown:
+            print("Binding: unconfirmed")
             print(
                 "WARN: editor process does not expose a project path; confirm the window title and "
                 f"latest Open project log before writing {expected_project}"
             )
         else:
+            print("Binding: no_match")
             print(f"WARN: no editor process matched expected project {expected_project}")
 
     log_root = Path.home() / "Library" / "Application Support" / "DouyinAR" / "Logs"
@@ -116,7 +125,7 @@ def main() -> int:
     if not log:
         print("Latest editor log: not found")
     else:
-        print(f"Latest editor log: {log}")
+        print(f"Latest editor log (not bound to expected project): {log}")
         try:
             lines = log.read_text(encoding="utf-8", errors="replace").splitlines()
             signals = []
@@ -124,7 +133,10 @@ def main() -> int:
             for line in lines:
                 if not SIGNAL_PATTERN.search(line):
                     continue
-                cleaned = redact(line)
+                # Emit signal names only: matching log lines can contain entire
+                # export manifests, base64 icons, credentials and upload URLs.
+                signal = SIGNAL_PATTERN.search(line).group(0)
+                cleaned = next((code for code in ("ETIMEDOUT", "ECONNREFUSED", "ENOTFOUND", "effect_upload_result") if code.lower() == signal.lower()), "editor_lifecycle_or_import_signal")
                 key = re.sub(r"^\[[^\]]+\]\s*", "", cleaned)
                 if key == previous_key:
                     continue
@@ -132,7 +144,7 @@ def main() -> int:
                 previous_key = key
             print(f"Recent signals ({min(len(signals), args.signals)} of {len(signals)}):")
             for line in signals[-args.signals :]:
-                print(line)
+                print("Signal (unbound log): " + line)
         except OSError as exc:
             print(f"WARN: cannot read latest log: {exc}")
 
